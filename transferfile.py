@@ -12,7 +12,9 @@ def parseInformation(cmdData):
     # 6 items would be needed for server -> server
     # offset parsing by 1
     if len(cmdData) < 5:
-        sys.exit("Not enough arguments -> ([File(s) to move] CredentialsFile.json destinationFolder HostAddress:port Target:port) ")
+        sys.exit(
+            "Not enough arguments -> ([File(s) to move] CredentialsFile.json destinationFolder HostAddress:port "
+            "Target:port) ")
     # grab the list of files given
     files_list = cmdData[1].strip('[]').split(",")
     # print("FIles list", files_list[0])
@@ -46,12 +48,15 @@ def parseInformation(cmdData):
     USER_NAME2 = credentials_data['USER_NAME2']
     PASSWORD2 = credentials_data['PASSWORD2']
 
-    return files_list, USER_NAME, PASSWORD, destination_folder, host, port
+    return files_list, USER_NAME, PASSWORD, USER_NAME2, PASSWORD2, destination_folder, host, port
 
 
-def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, port):
+def transfer_file(files_list, USER_NAME, PASSWORD, USER_NAME2, PASSWORD2, destination_folder, host, port):
     # logging.basicConfig(level=logging.DEBUG)
-
+    host2 = "192.168.1.240"
+    # keep track of files
+    completed_list = []
+    skipped_list = []
     # surround with try and catch to make sure program exits safely with incorrect host or incorrect credentials
     try:
         # create ssh client and connect via ssh
@@ -62,6 +67,8 @@ def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, por
         # open sftp connection using ssh
         sftp = ssh.open_sftp()
         print("Successful connection with: ", host)
+
+        # hardcoded for demo purposes to off load some commands from cmd
 
         # ssh into main server and execute commands to sftp files from one server to another
         # does not work due to limitations of testing environment
@@ -77,31 +84,60 @@ def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, por
     except IOError as ioerr:
         logging.exception("Could not form a proper connection to host")
 
-    # can fetch any file from remote server then transfer it over to
-    # sftp.get(destination_folder+files_list[0], "C:/Users/achma/Desktop/demo/%s" % files_list[0])
-    # keep track of files
-    completed_list = []
-    skipped_list = []
+    # can fetch any file from remote server then transfer it over
+    files_to_copy = []
+    for file in files_list:
+        # print("FIle in beg", file)
+        try:
+            # print("THIS FILE",destination_folder,file.strip())
+            file = file.strip()
+            sftp.get(destination_folder + file, "C:/Users/achma/Desktop/demo/%s" % file)
+            sftp.remove(destination_folder + file)
+            files_to_copy.append(file)
+            # print("GOT",destination_folder , file)
+        except FileNotFoundError as error:
+            #print("Did not find file ", file, "moved onto next file")
+            os.remove(file)
+            skipped_list.append(file)
+            # files_list.remove(file)
+            #print("File at end", file)
+            #print(files_list)
+            continue
+    try:
+        ssh.close()
+        sftp.close()
+        ssh.connect(host2, username=USER_NAME2, password=PASSWORD2, port=port)
+        sftp = ssh.open_sftp()
+    except paramiko.AuthenticationException as exception:
+        sys.exit("Incorrect username or password, check credentials file and try again")
+    except TimeoutError as error:
+        sys.exit("Could not establish a proper connection with %s, check ipAddress/server and try again" % host2)
+    except IOError as ioerr:
+        logging.exception("Could not form a proper connection to host")
 
     # handle a warning
     # even though this point would never be reached if this was empty
     file_base_name = "notarealfile"
-    for i, full_file_name in enumerate(files_list):
+    for i, full_file_name in enumerate(files_to_copy):
         try:
             file_base_name = os.path.basename(full_file_name)
-            status = sftp.put(file_base_name, destination_folder + file_base_name)
+            status = sftp.put(file_base_name, '/users/someo/Desktop/VM_FTP_FOLDER/%s' % file_base_name)
             print("Status of:", file_base_name, ":", status)
             completed_list.append(file_base_name)
+            os.remove(file_base_name)
         except FileNotFoundError as error:
             print("Did not find file %s, moved on to next file" % full_file_name)
             skipped_list.append(file_base_name)
             continue
+    ssh.close()
+    sftp.close()
     return completed_list, skipped_list
 
 
 if __name__ == '__main__':
-    files_list, USER_NAME, PASSWORD, destination_folder, host, port = parseInformation(sys.argv)
-    completed_list, skipped_list = transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, port)
+    files_list, USER_NAME, PASSWORD, USERNAME2, PASSWORD2, destination_folder, host, port = parseInformation(sys.argv)
+    completed_list, skipped_list = transfer_file(files_list, USER_NAME, PASSWORD, USERNAME2, PASSWORD2,
+                                                 destination_folder, host, port)
     print("----------------------------")
     print("Successfully transferred: ", completed_list)
     print("Files Skipped: ", skipped_list)
