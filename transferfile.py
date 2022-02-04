@@ -9,8 +9,10 @@ import paramiko
 def parseInformation(cmdData):
     # print('Argument list', str(sys.argv))
     # check if there are enough inputs to copy files
+    # 6 items would be needed for server -> server
+    # offset parsing by 1
     if len(cmdData) < 5:
-        sys.exit("Not enough arguments -> ([File(s) to move] CredentialsFile.json destinationFolder HostAddress:port) ")
+        sys.exit("Not enough arguments -> ([File(s) to move] CredentialsFile.json destinationFolder HostAddress:port Target:port) ")
     # grab the list of files given
     files_list = cmdData[1].strip('[]').split(",")
     # print("FIles list", files_list[0])
@@ -41,13 +43,13 @@ def parseInformation(cmdData):
     # successfully obtained credentials into their own separate fields
     USER_NAME = credentials_data['USER_NAME']
     PASSWORD = credentials_data['PASSWORD']
+    USER_NAME2 = credentials_data['USER_NAME2']
+    PASSWORD2 = credentials_data['PASSWORD2']
 
     return files_list, USER_NAME, PASSWORD, destination_folder, host, port
 
 
 def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, port):
-
-
     # logging.basicConfig(level=logging.DEBUG)
 
     # surround with try and catch to make sure program exits safely with incorrect host or incorrect credentials
