@@ -46,6 +46,8 @@ def parseInformation(cmdData):
 
 
 def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, port):
+
+
     # logging.basicConfig(level=logging.DEBUG)
 
     # surround with try and catch to make sure program exits safely with incorrect host or incorrect credentials
@@ -58,6 +60,14 @@ def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, por
         # open sftp connection using ssh
         sftp = ssh.open_sftp()
         print("Successful connection with: ", host)
+
+        # ssh into main server and execute commands to sftp files from one server to another
+        # does not work due to limitations of testing environment
+        """stdin, stdout, stderr = ssh.exec_command('sftp username@hostname', get_pty=True)
+        stdin.write("would be password" + "\n")
+        stdin.write("get file\n")
+        stdin.write("quit\n")
+        stdin.flush()"""
     except paramiko.AuthenticationException as exception:
         sys.exit("Incorrect username or password, check credentials file and try again")
     except TimeoutError as error:
@@ -65,6 +75,8 @@ def transfer_file(files_list, USER_NAME, PASSWORD, destination_folder, host, por
     except IOError as ioerr:
         logging.exception("Could not form a proper connection to host")
 
+    # can fetch any file from remote server then transfer it over to
+    # sftp.get(destination_folder+files_list[0], "C:/Users/achma/Desktop/demo/%s" % files_list[0])
     # keep track of files
     completed_list = []
     skipped_list = []
